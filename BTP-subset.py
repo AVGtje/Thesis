@@ -166,17 +166,17 @@ predicted_daily_return = sum([x_new[i] * sum(y_new[j] * X[:, i*6+j] for j in ran
 cumulative_return = np.cumprod(1 + predicted_daily_return)
 ROR = np.cumprod(1 + y)
 '''
-# 创建一个新的 DataFrame，包含累积收益率和 ROR 数据
+# Create a new DataFrame containing cumulative returns and ROR data
 plot_data = pd.DataFrame({'Cumulative_Return_Predicted': cumulative_return, 'Cumulative_Return_ABYIX': AB}, index=ROR.index)
 
-# 绘制图表
+
 fig, ax = plt.subplots()
 plt.plot(plot_data.index, plot_data['Cumulative_Return_Predicted'], label='Cumulative Return Predicted')
 plt.plot(plot_data.index, plot_data['Cumulative_Return_ABYIX'], label='Cumulative Return ABYIX')
 
 
 
-# 添加标签和图例
+#Add labels and legends
 plt.xlabel('Year')
 plt.ylabel('Cumulative Return')
 plt.title('Cumulative Return ABYIX and the Bottom-up Method')

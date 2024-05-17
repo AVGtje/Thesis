@@ -28,7 +28,8 @@ To test the robustness of the top-down method, we run the model with other funds
 
 **2. The Bottom-Up Method**
 
-**2.1** The bottom-up method consists of the carry strategy and trend strategy. The method uses prices of instruments across 6 asset classes: agricultural products, bonds, energies, metals, currencies, and equities. BTP-carry.py implements the carry strategy using time signals carry5, carry20, carry60, and carry120. The script encompasses various functions for data preprocessing, standard deviation calculation, position sizing, carry forecast, daily return calculation, and plotting.
+**2.1** 
+The bottom-up method consists of the carry strategy and trend strategy. The method uses prices of instruments across 6 asset classes: agricultural products, bonds, energies, metals, currencies, and equities. BTP-carry.py implements the carry strategy using time signals carry5, carry20, carry60, and carry120. The script encompasses various functions for data preprocessing, standard deviation calculation, position sizing, carry forecast, daily return calculation, and plotting.
 
 Functions:
 
@@ -60,7 +61,8 @@ Computes the daily percentage return.
 plotting(prices_df, perc_return):
 Plots the daily return over time.
 
-**2.2** BTP-trend.py implements the trend strategy using time signals trend2, trend4, trend 8, trend16, trend32, and trend64. Here's an explanation of each part of the code:
+**2.2** 
+BTP-trend.py implements the trend strategy using time signals trend2, trend4, trend 8, trend16, trend32, and trend64. Here's an explanation of each part of the code:
 
 Data Preprocessing
 
@@ -93,7 +95,8 @@ Results
 Compute daily percentage returns.
 Plot the daily return over time.
 
-**2.3** After getting the daily returns over different instruments and time signals, this part we do an optimization to select the best weights of asset classes and time signals. Bottom-up.py implements this. Description:
+**2.3** 
+After getting the daily returns over different instruments and time signals, this part we do an optimization to select the best weights of asset classes and time signals. Bottom-up.py implements this. Description:
 
 The script reads historical data from the specified CSV file.
 It initializes parameters for the CTA model by initial_guess.
@@ -102,9 +105,11 @@ The optimized parameters are used to predict daily returns.
 Cumulative returns are calculated and plotted against actual cumulative returns.
 
 
-**2.4.1** To test the robustness of the bottom-up method, we select a subset of X and use the weights to predict the remaining subsets. That means we use part of the SG CTA data as training data and the rest of them as testing data. We respectively use 2000-2010, 2001-2011, 2002-2012, 2003-2013, 2004-2014, 2005-2015, 2006-2016, 2007-2017, 2008-2018, 2009-2019, and 2010-2020 as the training dataset. The file BTP-subset.py implements this. It export not only the optimal weights but also cumulative return plots.
+**2.4.1** 
+To test the robustness of the bottom-up method, we select a subset of X and use the weights to predict the remaining subsets. That means we use part of the SG CTA data as training data and the rest of them as testing data. We respectively use 2000-2010, 2001-2011, 2002-2012, 2003-2013, 2004-2014, 2005-2015, 2006-2016, 2007-2017, 2008-2018, 2009-2019, and 2010-2020 as the training dataset. The file BTP-subset.py implements this. It export not only the optimal weights but also cumulative return plots.
 
-**2.4.2** To test if we can use bottom-up method to replicate other funds, BTP_otherfunds.py run the optimization with other CTAs' daily return as well as yielding optimzal weights and cumulative plots.
+**2.4.2** 
+To test if we can use bottom-up method to replicate other funds, BTP_otherfunds.py run the optimization with other CTAs' daily return as well as yielding optimzal weights and cumulative plots.
 
 **3. Preprocessing and Data Cleaning**
 

@@ -6,7 +6,9 @@ This work consists of two parts, namely, fitting regression to replicate CTAs us
 1.The Top-Down Method
 
 The top-down method uses rolling regression to fit CTA returns. The method is to use linear regressions within a lookback period, using CTA's daily return as training data to predict the next day's ratio of return. Hyperparameters include the rolling time window (which determines the number of training data for each small regression), the number of instruments, and the regularization method (Elasticnet, Lasso, Ridge).
+
 The Top-down.py script implements this method using SG CTA's daily return data from 2000, as explained in detail below.
+
 Data Handling:
 The script loads financial instrument price data from a CSV file (mmmm.csv), which is assumed to contain prices with missing values handled using forward-fill method.
 The prices are then processed to calculate the ratio of return (ROR) and normalize them by the rolling standard deviation to ensure all covariates are on the same scale.
@@ -27,6 +29,7 @@ To test the robustness of the top-down method, we run the model with other funds
 2. The Bottom-Up Method
 
 2.1 The bottom-up method consists of the carry strategy and trend strategy. The method uses prices of instruments across 6 asset classes: agricultural products, bonds, energies, metals, currencies, and equities. BTP-carry.py implements the carry strategy using time signals carry5, carry20, carry60, and carry120. The script encompasses various functions for data preprocessing, standard deviation calculation, position sizing, carry forecast, daily return calculation, and plotting.
+
 Functions:
 preprocess(adjusted_prices_df, current_prices_df):
 Reads adjusted prices and current prices CSV files.

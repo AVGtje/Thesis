@@ -23,7 +23,9 @@ The script generates plots showing the cumulative actual ROR and cumulative pred
 
 To test the robustness of the top-down method, we run the model with other funds' datasets. The file TPD_otherfunds.py checks if the method can be used to replicate other funds. TPD_otherfunds.py is very similar to Top-down.py except for the input data and y for prediction.
 
+
 2. The Bottom-Up Method
+
 2.1 The bottom-up method consists of the carry strategy and trend strategy. The method uses prices of instruments across 6 asset classes: agricultural products, bonds, energies, metals, currencies, and equities. BTP-carry.py implements the carry strategy using time signals carry5, carry20, carry60, and carry120. The script encompasses various functions for data preprocessing, standard deviation calculation, position sizing, carry forecast, daily return calculation, and plotting.
 Functions:
 preprocess(adjusted_prices_df, current_prices_df):

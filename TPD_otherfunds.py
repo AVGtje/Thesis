@@ -129,8 +129,8 @@ for window in window_sizes:
             y_window = y[start:start + window]
             
             if y_window.isna().any() or X_window.isna().any().any():
-                y_window = y_window.fillna(y_window.mean())  # 用均值填充缺失值
-                X_window = X_window.fillna(X_window.mean())  # 用均值填充缺失值
+                y_window = y_window.fillna(y_window.mean())  
+                X_window = X_window.fillna(X_window.mean())  
             if regularization == 'ElasticNet':
                 model = ElasticNet(alpha=0.000001, l1_ratio=0.5, fit_intercept=False)
             model.fit(X_window, y_window)

@@ -115,6 +115,18 @@ for i, b in enumerate(y_new, start=1):
 
 # Calculate predicted daily return using optimized parameters
 predicted_daily_return = sum([x_new[i] * sum(y_new[j] * X[:, i*6+j] for j in range(6)) for i in range(10)])
+# Calculate R²
+ss_total = np.sum((y - np.mean(y)) ** 2)
+ss_res = np.sum((y - predicted_daily_return) ** 2)
+r2 = 1 - (ss_res / ss_total)
+print(f"R²: {r2}")
+
+# Calculate Sharpe Ratio
+risk_free_rate = 0  # Assuming risk-free rate is 0
+excess_returns = predicted_daily_return - risk_free_rate
+sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)  # Annualized Sharpe Ratio
+print(f"Sharpe Ratio: {sharpe_ratio}")
+
 # Convert daily return to cumulative return
 cumulative_return = np.cumprod(1 + predicted_daily_return)
 ROR= np.cumprod(1 + y)

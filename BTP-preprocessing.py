@@ -5,7 +5,7 @@ Created on Fri Mar 22 12:58:01 2024
 @author: kanr8
 """
 
-''' #Step 1 Classifying by asset class.
+#Step 1 Classifying by asset class.
 import os 
 import shutil
 
@@ -47,8 +47,7 @@ for subdir in os.listdir(main_folder):
                             os.makedirs(category_folder, exist_ok=True)
                             shutil.copy2(os.path.join(root, file), category_folder)
 
-'''
-'''
+
 # Step 2 This is a code to calculate the average value for each asset class under each signal
 
 import os
@@ -87,7 +86,7 @@ for root, dirs, files in os.walk(base_folder_path):
         # Save the new CSV file
         df['ave'].to_csv(new_csv_path, index=False)
 
-'''
+
 
 
 #Step 3 Merge the average values of all asset class categories under all signals into a single csv

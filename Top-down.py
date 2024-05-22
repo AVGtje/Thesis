@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
 import matplotlib.dates as mdates
 import warnings
 warnings.filterwarnings('ignore')
@@ -27,9 +28,6 @@ prices = df.iloc[:, 1:].apply(pd.to_numeric).values  # Convert to numeric values
 prices_vol = df.iloc[:, 1:].apply(pd.to_numeric).rolling(40, min_periods=10).std().values
 prices_vol_norm = prices / prices_vol
 prices = prices_vol_norm
-# From here, you can either continue with prices or prices_vol_norm
-# If you are going to regularize, you need to have vol-normalized,
-# as all covariates need to be on the same scale.
 
 
 # Function to calculate correlation sum with missing values handled
@@ -91,8 +89,6 @@ inf_mask = np.isinf(X)
 print("Selected instruments:")
 print(selected_instruments_names)
 
-
-#Load the target ratio of return
 dfl = pd.read_csv(r"D:\2022-2023\thesis\bottomup\7instr.csv")
 dfl = dfl.fillna(0)
 date_ROR_df = dfl[['date', 'ROR']]
@@ -100,20 +96,22 @@ merged_df = pd.concat([date_ROR_df, s_df], axis=1)
 merged_df['date'] = pd.to_datetime(merged_df['date'])
 merged_df.set_index('date', inplace=True)
 
-window_sizes = [10, 30, 50, 100]
-regularizations = [ 'ElasticNet']
+window_sizes = [10, 30]
+regularizations = ['ElasticNet']
 y = merged_df['ROR']
-X = merged_df.iloc[:,1:]
+X = merged_df.iloc[:, 1:]
 
 mse_results_monthly = {}
-
 sharpe_results_monthly = {}
+r2_results = {}
 
 for window in window_sizes:
     for regularization in regularizations:
         if window > len(merged_df):
             continue
         predicted_ROR = []
+        r2_scores = []
+        sharpe_ratios = []
         for start in range(len(merged_df) - window):
             X_window = X[start:start + window]
             y_window = y[start:start + window]
@@ -125,22 +123,38 @@ for window in window_sizes:
                 model = ElasticNet(alpha=0.000001, l1_ratio=0.5, fit_intercept=False)
             model.fit(X_window, y_window)
             X_next = X.iloc[start + window]
-            if not np.isnan(X_next).any():  
-                predicted_ROR.append(model.predict([X_next])[0])
+            if not np.isnan(X_next).any():
+                prediction = model.predict([X_next])[0]
+                predicted_ROR.append(prediction)
         merged_df['predicted_ROR_' + regularization + '_' + str(window)] = pd.Series(predicted_ROR, index=merged_df.index[window:])
+
         # Resample merged_df to monthly frequency
         merged_df_monthly = merged_df.resample('M').mean()
-# Resample merged_df to monthly frequency
-merged_df_monthly = merged_df.resample('M').mean()
+
+        # Calculate monthly MSE and store it in the mse_results_monthly dictionary
+        mse_monthly = mean_squared_error(merged_df_monthly['ROR'][window:], merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window)][window:])
+        mse_results_monthly[regularization + '_' + str(window)] = mse_monthly
+
+        # Calculate and store Sharpe ratio in the sharpe_results_monthly dictionary
+        returns = merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window)]
+        sharpe_ratio = sqrt(12) * returns.mean() / returns.std()  # assuming that returns are monthly
+        sharpe_results_monthly[regularization + '_' + str(window)] = sharpe_ratio
+
+# Print out monthly MSE results and Sharpe ratio results
+for key, mse_monthly in mse_results_monthly.items():
+    print(f"Monthly MSE for {key}: {mse_monthly}")
+    
+for key, sharpe_ratio in sharpe_results_monthly.items():
+    print(f"Sharpe Ratio for {key}: {sharpe_ratio}")
 
 # Calculate cumulative returns
-merged_df_monthly['cumulative_actual_ROR'] = (1 + 10*2*merged_df_monthly['ROR']).cumprod()
+merged_df_monthly['cumulative_actual_ROR'] = (1 + 10 * 2 * merged_df_monthly['ROR']).cumprod()
 for window in window_sizes:
     for regularization in regularizations:
         if window > len(merged_df):
             continue
         column_name = 'predicted_ROR_' + regularization + '_' + str(window)
-        merged_df_monthly['cumulative_' + column_name] = (1 + 10*2*merged_df_monthly[column_name]).cumprod()
+        merged_df_monthly['cumulative_' + column_name] = (1 + 10 * 2 * merged_df_monthly[column_name]).cumprod()
 
 # Plot cumulative actual and predicted ROR
 plt.figure(figsize=(10, 6))
@@ -159,6 +173,3 @@ plt.ylabel('Cumulative Return')
 plt.legend()
 plt.title('Cumulative SG CTA vs the top-down method')
 plt.show()
-
-
-

@@ -110,7 +110,7 @@ Cumulative returns are calculated and plotted against actual cumulative returns.
 
 **2.4.1** 
 
-To test the robustness of the bottom-up method, we select a subset of X and use the weights to predict the remaining subsets. That means we use part of the SG CTA data as training data and the rest of them as testing data. We respectively use 2000-2010, 2001-2011, 2002-2012, 2003-2013, 2004-2014, 2005-2015, 2006-2016, 2007-2017, 2008-2018, 2009-2019, and 2010-2020 as the training dataset. The file BTP-subset.py implements this. It export not only the optimal weights but also cumulative return plots.
+To test the robustness of the bottom-up method, we select a subset of X and use the weights to predict the remaining subsets. That means we use part of the SG CTA data as training data and the rest of them as testing data. We respectively use 2000-2010, 2001-2011, 2002-2012, 2003-2013, 2004-2014, 2005-2015, 2006-2016, 2007-2017, 2008-2018, 2009-2019, and 2010-2020 as the training dataset. The file BTP-subset.py implements this. It export not only the optimal weights, R^2, sharpe ratio, and cumulative return plots, but also a table of the weights across subsets.
 
 **2.4.2** 
 

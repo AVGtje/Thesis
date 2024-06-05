@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Nov  9 15:52:04 2023
-
-@author: kanr8
-
-"""
-
 from math import sqrt
 import pandas as pd
 import numpy as np
@@ -13,6 +5,7 @@ from sklearn.linear_model import Lasso, Ridge, ElasticNet
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 import matplotlib.dates as mdates
+from sklearn.metrics import r2_score
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -62,7 +55,7 @@ def select_instruments(prices, num_instruments):
     return selected_indices
 
 # Call the main function
-selected_instruments_indices = select_instruments(prices, num_instruments=27)
+selected_instruments_indices = select_instruments(prices, num_instruments=17)
 selected_instruments_names = dff.columns[selected_instruments_indices] 
 
 s_df=dff[selected_instruments_names]
@@ -80,19 +73,17 @@ large_constant = 1e9
 s_df[s_df == np.inf] = large_constant
 s_df[s_df == -np.inf] = -large_constant
 #print(s_df)
-
-
 X = s_df.iloc[:, 1:]
 
 # Check for infinity
 inf_mask = np.isinf(X)
-
 
 #print(f"There are {np.sum(inf_mask)} infinite values in X")
 
 #print(X)
 print("Selected instruments:")
 print(selected_instruments_names)
+
 
 # Load the target ratio of return
 dfl = pd.read_csv(r"D:\2022-2023\thesis\bottomup\7instr.csv")
@@ -108,15 +99,12 @@ other_df.set_index('Date', inplace=True)
 merged_df = merged_df[merged_df.index >= first_date]
 merged_df = pd.concat([other_df['new'],merged_df], axis=1)
 print(merged_df)
-window_sizes = [20,30,50]
-regularizations = ['ElasticNet','Lasso']
+window_sizes = [20,50,70]
+regularizations = ['ElasticNet']
 y = other_df['new']
+X = merged_df.iloc[:,1:]
 
-X = merged_df.iloc[:, 1:]
-
-
-
-mse_results_monthly = {}
+r2_results_monthly = {}
 sharpe_results_monthly = {}
 
 for window in window_sizes:
@@ -131,29 +119,45 @@ for window in window_sizes:
             if y_window.isna().any() or X_window.isna().any().any():
                 y_window = y_window.fillna(y_window.mean())  
                 X_window = X_window.fillna(X_window.mean())  
-            if regularization == 'ElasticNet':
+            if regularization == 'Lasso':
+                model = Lasso(alpha=0.1, fit_intercept=False)
+            elif regularization == 'Ridge':
+                model = Ridge(alpha=0.1, fit_intercept=False)
+            elif regularization == 'ElasticNet':
                 model = ElasticNet(alpha=0.000001, l1_ratio=0.5, fit_intercept=False)
             model.fit(X_window, y_window)
             X_next = X.iloc[start + window]
-            if not np.isnan(X_next).any():
+            if not np.isnan(X_next).any():  
                 predicted_ROR.append(model.predict([X_next])[0])
-        
-        # Ensure the length matches
-        predicted_ROR_series = pd.Series(predicted_ROR)
-        predicted_ROR_series.index = merged_df.index[window:window+len(predicted_ROR)]
+        merged_df['predicted_ROR_' + regularization + '_' + str(window)] = pd.Series(predicted_ROR, index=merged_df.index[window:])
+        # Resample merged_df to monthly frequency
+        merged_df_monthly = merged_df.resample('M').mean()
+        # Calculate  R^2 and store it in the r2_results_monthly dictionary
+        r2_monthly = r2_score(merged_df_monthly['new'][window:], merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window)][window:])
+        r2_results_monthly[regularization + '_' + str(window)] = r2_monthly
 
-# Resample merged_df to monthly frequency
-merged_df_monthly = merged_df.resample('M').mean()
+        # Calculate and store the Sharpe ratio in the sharpe_results_monthly dictionary
+        returns = merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window)]
+        sharpe_ratio = sqrt(12) * returns.mean() / returns.std()  # assuming returns are monthly
+        sharpe_results_monthly[regularization + '_' + str(window)] = sharpe_ratio
+
+# Output monthly R^2 results and Sharpe ratio results
+for key, r2_monthly in r2_results_monthly.items():
+    print(f"Monthly R^2 for {key}: {r2_monthly}")
+    
+for key, sharpe_ratio in sharpe_results_monthly.items():
+    print(f"Sharpe Ratio for {key}: {sharpe_ratio}")
+
 
 # Calculate cumulative returns
-merged_df_monthly['cumulative_actual_ROR'] = (1 + 10 * 2 * merged_df_monthly['new']).cumprod()
+merged_df_monthly['cumulative_actual_ROR'] = (1 + 10*2*merged_df_monthly['new']).cumprod()
 for window in window_sizes:
     for regularization in regularizations:
         if window > len(merged_df):
             continue
         column_name = 'predicted_ROR_' + regularization + '_' + str(window)
-        merged_df_monthly['cumulative_' + column_name] = (1 + 10 * 2 * merged_df_monthly[column_name]).cumprod()
-#merged_df_monthly = merged_df_monthly[merged_df_monthly.index >= '2000-01-01']
+        merged_df_monthly['cumulative_' + column_name] = (1 + 10*2*merged_df_monthly[column_name]).cumprod()
+
 # Plot cumulative actual and predicted ROR
 plt.figure(figsize=(10, 6))
 plt.yscale("log")
@@ -170,8 +174,6 @@ plt.xlabel('Year')
 plt.ylabel('Cumulative Return')
 plt.legend()
 plt.title('Cumulative ABYIX vs the Top-down Method')
-#plt.xlim([pd.to_datetime('2000-01-01'), merged_df_monthly.index[-1]])  # Set x-axis limits
 plt.show()
-
 
 

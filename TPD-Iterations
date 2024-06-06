@@ -1,0 +1,139 @@
+from math import sqrt
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import Lasso, Ridge, ElasticNet
+import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score
+import concurrent.futures
+import warnings
+warnings.filterwarnings('ignore')
+
+# Load the CSV data with missing values handled
+csv_file_path = r"D:\2022-2023\thesis\regression\data\mmmm.csv"  # mmmm is a gather of all instrument price data
+df = pd.read_csv(csv_file_path, skiprows=[0])  # Skip the first row (column names)
+dff = pd.read_csv(csv_file_path)
+df.fillna(method='ffill', inplace=True)  # Forward-fill missing values
+
+# Extract the prices of future instruments
+prices = df.iloc[:, 1:].apply(pd.to_numeric).values  # Convert to numeric values
+prices_vol = df.iloc[:, 1:].apply(pd.to_numeric).rolling(40, min_periods=10).std().values
+prices_vol_norm = prices / prices_vol
+prices = prices_vol_norm
+
+# Function to calculate correlation sum with missing values handled
+def calculate_correlation_sum(selected_indices, prices):
+    correlation_sum = 0.0
+    for idx in selected_indices:
+        corr_values = np.corrcoef(prices[:, idx], prices[:, selected_indices], rowvar=False)
+        correlation_sum += np.nansum(corr_values[:-1, -1])  # Ignore NaNs in the correlation calculation
+    return correlation_sum
+
+# Function to choose the next instrument with the lowest correlation sum
+def choose_next_instrument(selected_indices, prices):
+    min_correlation_sum = float('inf')
+    next_instrument = None
+    for idx in range(prices.shape[1]):
+        if idx not in selected_indices:
+            temp_indices = selected_indices + [idx]
+            correlation_sum = calculate_correlation_sum(temp_indices, prices)
+            if correlation_sum < min_correlation_sum:
+                min_correlation_sum = correlation_sum
+                next_instrument = idx
+    return next_instrument
+
+# Main function to select instruments
+def select_instruments(prices, num_instruments):
+    selected_indices = [np.random.randint(prices.shape[1])]
+    while len(selected_indices) < num_instruments:
+        next_instrument = choose_next_instrument(selected_indices, prices)
+        selected_indices.append(next_instrument)
+    return selected_indices
+
+# Function to perform the regression and calculate metrics
+def perform_regression(num_instruments, window_size):
+    results = []
+    for _ in range(2):  # Run each combination 3 times
+        selected_instruments_indices = select_instruments(prices, num_instruments)
+        selected_instruments_names = dff.columns[selected_instruments_indices]
+
+        s_df = dff[selected_instruments_names]
+        s_df.fillna(0, inplace=True)
+        s_df = s_df.astype(float)
+        large_constant = 1e9
+        s_df[s_df == np.inf] = large_constant
+        s_df[s_df == -np.inf] = -large_constant
+        X = s_df.iloc[:, 1:]
+
+        dfl = pd.read_csv(r"D:\2022-2023\thesis\bottomup\7instr.csv")
+        dfl = dfl.fillna(0)
+        date_ROR_df = dfl[['date', 'ROR']]
+        merged_df = pd.concat([date_ROR_df, s_df], axis=1)
+        merged_df['date'] = pd.to_datetime(merged_df['date'])
+        merged_df.set_index('date', inplace=True)
+
+        regularizations = ['ElasticNet']
+        y = merged_df['ROR']
+        X = merged_df.iloc[:, 1:]
+
+        for regularization in regularizations:
+            if window_size > len(merged_df):
+                continue
+            predicted_ROR = []
+            for start in range(len(merged_df) - window_size):
+                X_window = X[start:start + window_size]
+                y_window = y[start:start + window_size]
+                if regularization == 'Lasso':
+                    model = Lasso(alpha=0.1, fit_intercept=False)
+                elif regularization == 'Ridge':
+                    model = Ridge(alpha=0.1, fit_intercept=False)
+                elif regularization == 'ElasticNet':
+                    model = ElasticNet(alpha=0.000001, l1_ratio=0.5, fit_intercept=False)
+                model.fit(X_window, y_window)
+                X_next = X.iloc[start + window_size]
+                if not np.isnan(X_next).any():
+                    prediction = model.predict([X_next])[0]
+                    predicted_ROR.append(prediction)
+            merged_df['predicted_ROR_' + regularization + '_' + str(window_size)] = pd.Series(predicted_ROR, index=merged_df.index[window_size:])
+
+            # Resample merged_df to monthly frequency
+            merged_df_monthly = merged_df.resample('M').mean()
+
+            # Calculate monthly R^2
+            r2_monthly = r2_score(merged_df_monthly['ROR'][window_size:], merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window_size)][window_size:])
+
+            # Calculate and store the Sharpe ratio
+            returns = merged_df_monthly['predicted_ROR_' + regularization + '_' + str(window_size)]
+            sharpe_ratio = sqrt(12) * returns.mean() / returns.std()  # assuming returns are monthly
+
+            # Store results
+            results.append({
+                'num_instruments': num_instruments,
+                'window_size': window_size,
+                'r2': r2_monthly,
+                'sharpe_ratio': sharpe_ratio
+            })
+    return results
+
+if __name__ == "__main__":
+    # Initialize results DataFrame
+    results_df = pd.DataFrame(columns=['num_instruments', 'window_size', 'r2', 'sharpe_ratio'])
+
+    # Use concurrent.futures for parallel processing
+    with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
+        futures = []
+        for num_instruments in range(51, 61, 2):  # Odd numbers from 11 to 29
+            for window_size in range(21, 41, 2):  # Odd numbers from 21 to 29
+                futures.append(executor.submit(perform_regression, num_instruments, window_size))
+
+        for future in concurrent.futures.as_completed(futures):
+            results = future.result()
+            for result in results:
+                results_df = results_df.append(result, ignore_index=True)
+
+    # Output results to CSV
+    output_path = r"D:\2022-2023\thesis\bottomup\0911\data\individual_instr\indivudual_trendcarry\missingdatahandling\OF\results\n5060_w2040.csv"
+    results_df.to_csv(output_path, index=False)
+
+    # Print the final results
+    print(results_df)
+
